@@ -62,7 +62,7 @@ class JiraIssue(BaseModel):
     @classmethod
     @functools.lru_cache(maxsize=100)
     def from_key(cls, issue_key: str) -> "JiraIssue":
-        issue_data = cast(JsonResponse, jira.get_issue(issue_key))
+        issue_data = cast("JsonResponse", jira.get_issue(issue_key))
         return cls.from_json(issue_data)
 
 
@@ -86,18 +86,20 @@ class User(BaseModel):
     @classmethod
     @functools.lru_cache(maxsize=100)
     def from_username(cls, username: str) -> "User":
-        return cls.from_json(cast(JsonResponse, confluence.get_user_details_by_username(username)))
+        return cls.from_json(
+            cast("JsonResponse", confluence.get_user_details_by_username(username))
+        )
 
     @classmethod
     @functools.lru_cache(maxsize=100)
     def from_userkey(cls, userkey: str) -> "User":
-        return cls.from_json(cast(JsonResponse, confluence.get_user_details_by_userkey(userkey)))
+        return cls.from_json(cast("JsonResponse", confluence.get_user_details_by_userkey(userkey)))
 
     @classmethod
     @functools.lru_cache(maxsize=100)
     def from_accountid(cls, accountid: str) -> "User":
         return cls.from_json(
-            cast(JsonResponse, confluence.get_user_details_by_accountid(accountid))
+            cast("JsonResponse", confluence.get_user_details_by_accountid(accountid))
         )
 
 
@@ -138,11 +140,144 @@ class Organization(BaseModel):
     def from_api(cls) -> "Organization":
         return cls.from_json(
             cast(
-                JsonResponse,
+                "JsonResponse",
                 confluence.get_all_spaces(
                     space_type="global", space_status="current", expand="homepage"
                 ),
             )
+        )
+
+
+class SearchResults(BaseModel):
+    query: str
+    page_ids: list[int]
+    total_size: int
+    total_pages: int  # Pages only (filtered)
+
+    def export(self) -> None:
+        export_pages(self.page_ids)
+
+    @classmethod
+    def from_cql(cls, cql_query: str, limit: int = 100) -> "SearchResults":
+        """Execute CQL query and return page IDs for export.
+
+        Automatically filters results to pages only and handles pagination.
+        """
+        page_ids = []
+        start = 0
+        paging_limit = 25  # Conservative limit to avoid API restrictions
+        total_size = 0
+        total_pages = 0
+
+        # Ensure we only get pages by adding type filter if not present
+        if "type" not in cql_query.lower():
+            if cql_query.strip():
+                cql_query = f"({cql_query}) AND type = page"
+            else:
+                cql_query = "type = page"
+        elif "type = page" not in cql_query.lower() and "type=page" not in cql_query.lower():
+            # If type is specified but not page, add page filter
+            if "type" in cql_query.lower():
+                print(
+                    "WARNING: CQL query specifies content type other than 'page'. Adding 'AND type = page' to filter pages only."
+                )
+                cql_query = f"({cql_query}) AND type = page"
+
+        print(f"Executing full CQL query: {cql_query}")
+
+        try:
+            while start < limit:
+                current_limit = min(paging_limit, limit - start)
+
+                response = cast(
+                    "JsonResponse",
+                    confluence.cql(
+                        cql_query,
+                        start=start,
+                        limit=current_limit,
+                        expand="space",  # Minimal expansion to avoid 50-result limit
+                    ),
+                )
+
+                # Extract page IDs from results
+                results = response.get("results", [])
+                current_page_ids = []
+
+                for result in results:
+                    # The actual page information is nested under the 'content' key
+                    content = result.get("content", {})
+                    content_type = content.get("type", "unknown")
+
+                    # Check if it's a page by content type
+                    is_page = content_type == "page"
+
+                    if is_page:
+                        page_id = content.get("id")
+                        if page_id:
+                            try:
+                                current_page_ids.append(int(page_id))
+                            except (ValueError, TypeError):
+                                print(f"WARNING: Invalid page ID: {page_id}")
+                    else:
+                        # Skip non-page content
+                        pass
+
+                page_ids.extend(current_page_ids)
+
+                # Update counters
+                size = response.get("size", 0)
+                total_size = response.get("totalSize", 0)
+                total_pages += len(current_page_ids)
+
+                print(
+                    f"Retrieved {len(current_page_ids)} pages from {size} total results (batch {start // paging_limit + 1})"
+                )
+
+                # Break if no more results
+                if size == 0 or len(current_page_ids) == 0:
+                    break
+
+                start += size
+
+        except HTTPError as e:
+            if e.response and e.response.status_code == 400:  # Bad Request - invalid CQL
+                print(f"ERROR: Invalid CQL query syntax: {cql_query}")
+                print(
+                    "Please check CQL syntax. See: https://developer.atlassian.com/cloud/confluence/advanced-searching-using-cql/"
+                )
+                print("Common issues:")
+                print("- Use 'AND' not '&' between conditions")
+                print("- Use double quotes around values with spaces")
+                print("- Check field names and operators")
+                return cls(query=cql_query, page_ids=[], total_size=0, total_pages=0)
+            print(
+                f"ERROR: HTTP {e.response.status_code if e.response else 'Unknown'} when executing CQL query"
+            )
+            return cls(query=cql_query, page_ids=[], total_size=0, total_pages=0)
+        except Exception as e:
+            print(f"ERROR: Unexpected error when executing CQL query: {e!s}")
+            return cls(query=cql_query, page_ids=[], total_size=0, total_pages=0)
+
+        # Remove duplicates and sort
+        unique_page_ids = sorted(list(set(page_ids)))
+
+        # Print the first three items from the results
+        if unique_page_ids:
+            print("First three items from the results:")
+            for i, page_id in enumerate(unique_page_ids[:3]):
+                print(f"  {i + 1}. Page ID: {page_id}")
+
+        print("CQL Search Results:")
+        print(f"  Query: {cql_query}")
+        print(f"  Total matched content: {total_size}")
+        print(f"  Pages found: {len(unique_page_ids)}")
+        print(f"  Pages to export: {len(unique_page_ids)}")
+
+        return cls(
+            query=cql_query,
+            page_ids=unique_page_ids,
+            total_size=total_size,
+            total_pages=len(unique_page_ids),
         )
 
 
@@ -172,7 +307,9 @@ class Space(BaseModel):
     @classmethod
     @functools.lru_cache(maxsize=100)
     def from_key(cls, space_key: str) -> "Space":
-        return cls.from_json(cast(JsonResponse, confluence.get_space(space_key, expand="homepage")))
+        return cls.from_json(
+            cast("JsonResponse", confluence.get_space(space_key, expand="homepage"))
+        )
 
 
 class Label(BaseModel):
@@ -278,7 +415,7 @@ class Attachment(Document):
 
         while size >= paging_limit:
             response = cast(
-                JsonResponse,
+                "JsonResponse",
                 confluence.get_attachments_from_content(
                     page_id,
                     start=start,
@@ -333,7 +470,7 @@ class Page(Document):
         try:
             while start < total_size:
                 response = cast(
-                    JsonResponse,
+                    "JsonResponse",
                     confluence.cql(cql_query, limit=paging_limit, start=start),
                 )
 
@@ -472,7 +609,7 @@ class Page(Document):
         try:
             return cls.from_json(
                 cast(
-                    JsonResponse,
+                    "JsonResponse",
                     confluence.get_page_by_id(
                         page_id,
                         expand="body.view,body.export_view,body.editor2,metadata.labels,"
@@ -507,7 +644,7 @@ class Page(Document):
             space_key = urllib.parse.unquote_plus(match.group(1))
             page_title = urllib.parse.unquote_plus(match.group(2))
             page_data = cast(
-                JsonResponse,
+                "JsonResponse",
                 confluence.get_page_by_title(space=space_key, title=page_title, expand="version"),
             )
             return Page.from_id(page_data["id"])
@@ -571,8 +708,8 @@ class Page(Document):
             self, el: BeautifulSoup, text: str, parent_tags: list[str]
         ) -> None:
             rows = [
-                cast(list[Tag], tr.find_all(["th", "td"]))
-                for tr in cast(list[Tag], el.find_all("tr"))
+                cast("list[Tag]", tr.find_all(["th", "td"]))
+                for tr in cast("list[Tag]", el.find_all("tr"))
                 if tr
             ]
             if not rows:
@@ -742,7 +879,7 @@ class Page(Document):
 
         def convert_jira_issue(self, el: BeautifulSoup, text: str, parent_tags: list[str]) -> str:
             issue_key = el.get("data-jira-key")
-            link = cast(BeautifulSoup, el.find("a", {"class": "jira-issue-key"}))
+            link = cast("BeautifulSoup", el.find("a", {"class": "jira-issue-key"}))
             if not issue_key:
                 return self.process_tag(link, parent_tags)
             if not link:
