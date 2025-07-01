@@ -98,20 +98,130 @@ Export all Confluence pages across all spaces:
 confluence-markdown-exporter all-spaces <output path e.g. ./output_path/>
 ```
 
-### 3. Output
+#### 2.4. Export by CQL Search Query
 
-The exported Markdown file(s) will be saved in the specified `output` directory e.g.:
+Export Confluence pages matching a CQL (Confluence Query Language) query. **Only pages are exported** - blog posts, comments, and attachments are automatically filtered out.
 
-```sh
-output_path/
-└── MYSPACE/
-   ├── MYSPACE.md
-   └── MYSPACE/
-      ├── My Confluence Page.md
-      └── My Confluence Page/
-            ├── My nested Confluence Page.md
-            └── Another one.md
+```bash
+python -m confluence_markdown_exporter.main search 'lastModified > now("-1d")' --limit 3
 ```
+
+Search with multiple criteria:
+
+```bash
+confluence-markdown-exporter search "label = important AND creator = jsmith" ./output_path/
+```
+
+Limit the number of results:
+
+```bash
+confluence-markdown-exporter search "type = page" ./output_path/ --max-results 50
+```
+
+**Important Notes:**
+- 🔍 **Pages Only**: Searches automatically filter to pages only. Blog posts, comments, and attachments are excluded from export.
+- 📝 **Automatic Type Filtering**: If you don't specify `type = page`, it's automatically added to your query.
+- 📄 **Markdown Export**: Only page content is exported as markdown files, maintaining the same quality as individual page exports.
+
+**Common CQL Query Patterns:**
+
+| Use Case | CQL Query Example | What It Does |
+|----------|------------------|--------------|
+| **Pages in specific space** | `space = ENGINEERING` | All pages in ENGINEERING space |
+| **Recent updates** | `lastModified >= startOfMonth()` | Pages modified this month |
+| **Pages by author** | `creator = jsmith` | Pages created by user jsmith |
+| **Pages edited by author** | `contributor = jsmith` | Pages edited by user jsmith |
+| **Pages with labels** | `label IN (urgent, review)` | Pages tagged with urgent OR review |
+| **Multiple labels** | `label = urgent AND label = review` | Pages tagged with urgent AND review |
+| **Text search** | `title ~ "API"` | Pages with "API" in the title |
+| **Descendant pages** | `ancestor = 12345` | All pages under page ID 12345 |
+| **Date range** | `created >= "2024-01-01" AND created < "2024-02-01"` | Pages created in January 2024 |
+| **Complex search** | `space = DOCS AND (label = api OR title ~ "API") AND lastModified >= startOfMonth()` | Multi-criteria search |
+
+**Advanced Options:**
+
+```bash
+# Include all content types in search (still exports pages only)
+confluence-markdown-exporter search "space = DOCS" ./output/ --include-all-types
+
+# Limit results
+confluence-markdown-exporter search "creator = jsmith" ./output/ --max-results 25
+```
+
+**CQL Syntax Reference:**
+
+**Fields (commonly used):**
+- `space` - Space key (e.g., `space = DOCS`)
+- `title` - Page title (e.g., `title = "My Page"` or `title ~ "keyword"`)
+- `creator` - Page creator (e.g., `creator = jsmith`)
+- `contributor` - Page contributor/editor (e.g., `contributor = jsmith`)
+- `label` - Page labels (e.g., `label = important`)
+- `created` - Creation date (e.g., `created >= startOfWeek()`)
+- `lastModified` - Last modified date (e.g., `lastModified >= "2024-01-01"`)
+- `ancestor` - Parent page ID (e.g., `ancestor = 12345`)
+
+**Operators:**
+- `=` - Equals (exact match)
+- `!=` - Not equals
+- `~` - Contains/fuzzy match (e.g., `title ~ "keyword"`)
+- `!~` - Does not contain
+- `IN` - In list (e.g., `label IN (urgent, review)`)
+- `NOT IN` - Not in list
+- `<`, `>`, `<=`, `>=` - Comparison (for dates/numbers)
+
+**Date Functions:**
+- `startOfWeek()` - Beginning of current week
+- `startOfMonth()` - Beginning of current month
+- `startOfYear()` - Beginning of current year
+- `endOfWeek()`, `endOfMonth()`, `endOfYear()` - End of periods
+- `now('-7d')` - 7 days ago
+- `now('-1M')` - 1 month ago
+
+**Logical Operators:**
+- `AND` - Both conditions must be true
+- `OR` - Either condition can be true
+- `NOT` - Condition must not be true
+- `()` - Group conditions
+
+**Common CQL Mistakes and Fixes:**
+
+❌ **Wrong**: `space = DOCS & creator = jsmith`
+✅ **Correct**: `space = DOCS AND creator = jsmith`
+
+❌ **Wrong**: `title = My Page Title`
+✅ **Correct**: `title = "My Page Title"` (use quotes for spaces)
+
+❌ **Wrong**: `label = urgent, review`
+✅ **Correct**: `label IN (urgent, review)` or `label = urgent OR label = review`
+
+❌ **Wrong**: `created > 2024-01-01`
+✅ **Correct**: `created >= "2024-01-01"` (use quotes for dates)
+
+**Troubleshooting Search Issues:**
+
+If your search returns no results:
+
+1. **Check space keys**: Ensure space keys exist and are spelled correctly
+2. **Verify user names**: Use exact usernames as they appear in Confluence
+3. **Simplify query**: Start with simple queries like `space = YOURSPACE`
+4. **Check permissions**: Ensure you have access to the spaces you're searching
+5. **Use fuzzy search**: Try `title ~ "keyword"` instead of exact matches
+6. **Check date formats**: Use quotes around dates: `"2024-01-01"`
+
+**Example Troubleshooting Session:**
+
+```bash
+# Start simple
+confluence-markdown-exporter search "space = DOCS" ./output/ --max-results 5
+
+# Add conditions gradually
+confluence-markdown-exporter search "space = DOCS AND creator = jsmith" ./output/ --max-results 5
+
+# Use fuzzy search for text
+confluence-markdown-exporter search "space = DOCS AND title ~ API" ./output/ --max-results 5
+```
+
+For complete CQL syntax documentation, see: [Atlassian CQL Documentation](https://developer.atlassian.com/cloud/confluence/advanced-searching-using-cql/)
 
 ## Configuration
 
