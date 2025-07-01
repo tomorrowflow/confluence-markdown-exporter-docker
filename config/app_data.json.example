@@ -1,0 +1,38 @@
+{
+  "export": {
+    "output_path": ".",
+    "page_href": "relative",
+    "page_path": "{space_name}/{homepage_title}/{ancestor_titles}/{page_title}.md",
+    "attachment_href": "relative",
+    "attachment_path": "{space_name}/attachments/{attachment_file_id}{attachment_extension}",
+    "page_breadcrumbs": true,
+    "include_document_title": true
+  },
+  "retry_config": {
+    "backoff_and_retry": true,
+    "backoff_factor": 2,
+    "max_backoff_seconds": 60,
+    "max_backoff_retries": 5,
+    "retry_status_codes": [
+      413,
+      429,
+      502,
+      503,
+      504
+    ]
+  },
+  "auth": {
+    "confluence": {
+      "url": "",
+      "username": "",
+      "api_token": "",
+      "pat": ""
+    },
+    "jira": {
+      "url": "",
+      "username": "",
+      "api_token": "",
+      "pat": "sdf"
+    }
+  }
+} 

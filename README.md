@@ -115,7 +115,7 @@ confluence-markdown-exporter search "label = important AND creator = jsmith" ./o
 Limit the number of results:
 
 ```bash
-confluence-markdown-exporter search "type = page" ./output_path/ --max-results 50
+confluence-markdown-exporter search "type = page" ./output_path/ --limit 50
 ```
 
 **Important Notes:**
@@ -145,7 +145,7 @@ confluence-markdown-exporter search "type = page" ./output_path/ --max-results 5
 confluence-markdown-exporter search "space = DOCS" ./output/ --include-all-types
 
 # Limit results
-confluence-markdown-exporter search "creator = jsmith" ./output/ --max-results 25
+confluence-markdown-exporter search "creator = jsmith" ./output/ --limit 25
 ```
 
 **CQL Syntax Reference:**
@@ -212,13 +212,13 @@ If your search returns no results:
 
 ```bash
 # Start simple
-confluence-markdown-exporter search "space = DOCS" ./output/ --max-results 5
+confluence-markdown-exporter search "space = DOCS" ./output/ --limit 5
 
 # Add conditions gradually
-confluence-markdown-exporter search "space = DOCS AND creator = jsmith" ./output/ --max-results 5
+confluence-markdown-exporter search "space = DOCS AND creator = jsmith" ./output/ --limit 5
 
 # Use fuzzy search for text
-confluence-markdown-exporter search "space = DOCS AND title ~ API" ./output/ --max-results 5
+confluence-markdown-exporter search "space = DOCS AND title ~ API" ./output/ --limit 5
 ```
 
 For complete CQL syntax documentation, see: [Atlassian CQL Documentation](https://developer.atlassian.com/cloud/confluence/advanced-searching-using-cql/)

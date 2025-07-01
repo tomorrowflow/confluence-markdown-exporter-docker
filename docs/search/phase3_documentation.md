@@ -35,7 +35,7 @@ confluence-markdown-exporter search "label = important AND creator = jsmith" ./o
 Limit the number of results:
 
 ```bash
-confluence-markdown-exporter search "type = page" ./output_path/ --max-results 50
+confluence-markdown-exporter search "type = page" ./output_path/ --limit 50
 ```
 
 **Important Notes:**
@@ -65,7 +65,7 @@ confluence-markdown-exporter search "type = page" ./output_path/ --max-results 5
 confluence-markdown-exporter search "space = DOCS" ./output/ --include-all-types
 
 # Limit results
-confluence-markdown-exporter search "creator = jsmith" ./output/ --max-results 25
+confluence-markdown-exporter search "creator = jsmith" ./output/ --limit 25
 ```
 
 **CQL Syntax Reference:**
@@ -132,13 +132,13 @@ If your search returns no results:
 
 ```bash
 # Start simple
-confluence-markdown-exporter search "space = DOCS" ./output/ --max-results 5
+confluence-markdown-exporter search "space = DOCS" ./output/ --limit 5
 
 # Add conditions gradually  
-confluence-markdown-exporter search "space = DOCS AND creator = jsmith" ./output/ --max-results 5
+confluence-markdown-exporter search "space = DOCS AND creator = jsmith" ./output/ --limit 5
 
 # Use fuzzy search for text
-confluence-markdown-exporter search "space = DOCS AND title ~ API" ./output/ --max-results 5
+confluence-markdown-exporter search "space = DOCS AND title ~ API" ./output/ --limit 5
 ```
 
 For complete CQL syntax documentation, see: [Atlassian CQL Documentation](https://developer.atlassian.com/cloud/confluence/advanced-searching-using-cql/)
@@ -170,7 +170,7 @@ Instead of confluence-markdown-exporter you can also use the shorthand cf-export
 Examples:
 - `cf-export page 12345 ./output/`
 - `cf-export search "space = DOCS" ./output/`
-- `cf-export search "creator = jsmith AND lastModified >= startOfWeek()" ./output/ --max-results 20`
+- `cf-export search "creator = jsmith AND lastModified >= startOfWeek()" ./output/ --limit 20`
 ```
 
 ## Testing Phase 3
@@ -195,7 +195,7 @@ confluence-markdown-exporter search "space = DOCS AND label = important" ./test_
 confluence-markdown-exporter search "title ~ API AND created >= startOfMonth()" ./test_docs/
 
 # Test options
-confluence-markdown-exporter search "space = DOCS" ./test_docs/ --max-results 5
+confluence-markdown-exporter search "space = DOCS" ./test_docs/ --limit 5
 confluence-markdown-exporter search "space = DOCS" ./test_docs/ --include-all-types
 
 # Test troubleshooting examples

@@ -218,7 +218,7 @@ python test_phase1_corrected.py
 # Verify: Only pages returned, proper error handling
 
 # Phase 2: Test CLI integration  
-confluence-markdown-exporter search "space = TEST" ./test/ --max-results 5
+confluence-markdown-exporter search "space = TEST" ./test/ --limit 5
 # Verify: Pages-only message, only .md files created
 
 # Phase 3: Test documentation examples

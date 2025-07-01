@@ -317,7 +317,7 @@ def preview_and_confirm_query(query: str) -> bool:
 @app.command(help="Interactive CQL query builder and export.")
 def search_interactive(
     output_path: Annotated[Path | None, typer.Argument()] = None,
-    max_results: Annotated[int, typer.Option("--max-results", "-m", help="Maximum number of results to export")] = 100,
+    max_results: Annotated[int, typer.Option("--limit", "-m", help="Maximum number of results to export")] = 100,
 ) -> None:
     from confluence_markdown_exporter.utils.cql_builder import build_cql_interactively, preview_and_confirm_query
     from confluence_markdown_exporter.confluence import SearchResults

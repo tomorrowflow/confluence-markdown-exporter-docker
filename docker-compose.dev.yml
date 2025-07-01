@@ -1,0 +1,31 @@
+services:
+  confluence-exporter:
+    # Override for development
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+
+    environment:
+      - LOG_LEVEL=DEBUG
+      - CRON_SCHEDULE=*/2 * * * * # Every 2 minutes for testing
+      - MAX_RESULTS=5 # Limit results for testing
+
+    volumes:
+      # Mount source code for development
+      - .:/app
+      - ./dev-exports:/app/exports
+      - ./dev-logs:/var/log/confluence-exporter
+
+    # Override health check for faster feedback
+    healthcheck:
+      interval: 30s
+      timeout: 10s
+      retries: 2
+      start_period: 10s
+
+  # Development log viewer - always enabled
+  log-viewer:
+    profiles: [] # Remove profile restriction for dev
+    ports:
+      - "8081:80" # Different port for dev

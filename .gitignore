@@ -126,3 +126,8 @@ dmypy.json
 .pyre/
 
 # End of https://www.gitignore.io/api/code,python
+.env.test
+.gitignore
+.gitignore
+config/config.json
+config/app_data.json

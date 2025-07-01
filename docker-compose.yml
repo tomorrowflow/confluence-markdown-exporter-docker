@@ -1,0 +1,72 @@
+services:
+  confluence-exporter:
+    build: .
+    image: confluence-exporter:latest
+    container_name: ${CONTAINER_NAME:-confluence-exporter}
+    restart: unless-stopped
+
+    environment:
+      # Required Confluence configuration
+      - CONFLUENCE_URL=${CONFLUENCE_URL}
+      - CONFLUENCE_USERNAME=${CONFLUENCE_USERNAME}
+      - CONFLUENCE_API_TOKEN=${CONFLUENCE_API_TOKEN}
+
+      # Export configuration
+      - CQL_QUERY=${CQL_QUERY:-space = MFS}
+      - CRON_SCHEDULE=${CRON_SCHEDULE:-0 2 * * *}
+      - EXPORT_PATH=${EXPORT_PATH:-/app/exports}
+      - MAX_RESULTS=${MAX_RESULTS:-100}
+
+      # Container configuration
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - CONTAINER_NAME=${CONTAINER_NAME:-confluence-exporter}
+
+    volumes:
+      # Export directory - persist exports outside container
+      - ./exports:/app/exports
+      # Log directory - persist logs outside container
+      - ./logs:/var/log/confluence-exporter
+      # Optional: Custom configuration
+      - ./config:/root/.config/confluence-markdown-exporter
+
+    # Health check
+    healthcheck:
+      test: CMD-SHELL [ "/app/docker/healthcheck.sh" ]
+      interval: 5m
+      timeout: 30s
+      retries: 3
+      start_period: 1m
+
+    # Resource limits (optional)
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+
+  # Optional: Log monitoring with simple web interface
+  log-viewer:
+    image: nginx:alpine
+    container_name: ${CONTAINER_NAME:-confluence-exporter}-logs
+    restart: unless-stopped
+    profiles:
+      - monitoring
+
+    ports:
+      - "8080:80"
+
+    volumes:
+      - ./logs:/var/log/confluence-exporter:ro
+      - ./docker/nginx-logs.conf:/etc/nginx/conf.d/default.conf:ro
+
+    depends_on:
+      - confluence-exporter
+
+volumes:
+  exports:
+    driver: local
+  logs:
+    driver: local

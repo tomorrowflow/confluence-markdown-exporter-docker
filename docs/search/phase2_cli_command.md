@@ -22,7 +22,7 @@ Add the `search` command to the CLI interface with proper CQL query handling and
 def search(
     cql_query: Annotated[str, typer.Argument(help="CQL query string (will be filtered to pages only)")],
     output_path: Annotated[Path | None, typer.Argument()] = None,
-    max_results: Annotated[int, typer.Option("--max-results", "-m", help="Maximum number of pages to export")] = 100,
+    max_results: Annotated[int, typer.Option("--limit", "-m", help="Maximum number of pages to export")] = 100,
     include_all_types: Annotated[bool, typer.Option("--include-all-types", help="Include blog posts, comments, etc. (default: pages only)")] = False,
 ) -> None:
     from confluence_markdown_exporter.confluence import SearchResults
@@ -79,7 +79,7 @@ Arguments:
   OUTPUT_PATH   [default: None]
 
 Options:
-  -m, --max-results INTEGER     Maximum number of pages to export [default: 100]
+  -m, --limit INTEGER     Maximum number of pages to export [default: 100]
   --include-all-types           Include blog posts, comments, etc. (default: pages only)
   --help                        Show this message and exit.
 ```
@@ -109,7 +109,7 @@ confluence-markdown-exporter search "space = TEST" ./test_output/ --include-all-
 
 ### 5. Test Max Results Option
 ```bash
-confluence-markdown-exporter search "type = page" ./test_output/ --max-results 5
+confluence-markdown-exporter search "type = page" ./test_output/ --limit 5
 ```
 
 **Expected Behavior**:
@@ -174,7 +174,7 @@ tests = [
     ("Search help test", "confluence-markdown-exporter search --help"),
     ("Invalid syntax test", "confluence-markdown-exporter search 'INVALID & SYNTAX' ./test_output/"),
     # Add real tests with your space:
-    # ("Real search test", f"confluence-markdown-exporter search 'space = YOURSPACE' {test_output} --max-results 2")
+    # ("Real search test", f"confluence-markdown-exporter search 'space = YOURSPACE' {test_output} --limit 2")
 ]
 
 print("🧪 Testing Phase 2 Corrected Implementation\n")
@@ -297,7 +297,7 @@ Before proceeding to Phase 3:
 - [ ] `confluence-markdown-exporter --help` shows the `search` command
 - [ ] `confluence-markdown-exporter search --help` shows proper usage including page filtering
 - [ ] Basic search query executes and filters to pages only
-- [ ] `--max-results` option works correctly
+- [ ] `--limit` option works correctly
 - [ ] `--include-all-types` option shows warning but still exports pages only
 - [ ] Error handling works for invalid CQL queries with helpful messages
 - [ ] Files are exported to the specified output directory as .md files only

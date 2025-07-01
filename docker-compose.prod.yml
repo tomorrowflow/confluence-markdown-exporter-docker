@@ -1,0 +1,82 @@
+version: '3.8'
+
+services:
+  confluence-exporter:
+    # Production overrides
+    restart: always
+
+    # Use advanced health check
+    healthcheck:
+      test: [ "/app/docker/healthcheck.sh" ]
+      interval: 10m
+      timeout: 1m
+      retries: 3
+      start_period: 2m
+
+    # Additional volumes for production features
+    volumes:
+      - ./exports:/app/exports
+      - ./logs:/var/log/confluence-exporter
+      - ./backups:/app/backups
+      - ./metrics:/app/metrics
+
+    # Environment for production features
+    environment:
+      - BACKUP_RETENTION_DAYS=${BACKUP_RETENTION_DAYS:-30}
+      - METRICS_COLLECTION_ENABLED=${METRICS_COLLECTION_ENABLED:-true}
+      - WEBHOOK_URL=${WEBHOOK_URL:-}
+
+    # Resource limits for production
+    deploy:
+      resources:
+        limits:
+          memory: ${MEMORY_LIMIT:-1G}
+          cpus: '${CPU_LIMIT:-1.0}'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+
+  # Metrics exporter (optional)
+  metrics-exporter:
+    image: nginx:alpine
+    container_name: ${CONTAINER_NAME:-confluence-exporter}-metrics
+    restart: unless-stopped
+    profiles:
+      - metrics
+
+    ports:
+      - "${METRICS_PORT:-9090}:80"
+
+    volumes:
+      - ./metrics:/usr/share/nginx/html:ro
+      - ./docker/nginx-metrics.conf:/etc/nginx/conf.d/default.conf:ro
+
+    depends_on:
+      - confluence-exporter
+
+  # Backup service (optional)
+  backup-service:
+    build: .
+    container_name: ${CONTAINER_NAME:-confluence-exporter}-backup
+    restart: "no"
+    profiles:
+      - backup
+
+    environment:
+      - BACKUP_RETENTION_DAYS=${BACKUP_RETENTION_DAYS:-30}
+
+    volumes:
+      - ./exports:/app/exports:ro
+      - ./logs:/var/log/confluence-exporter:ro
+      - ./backups:/app/backups
+
+    command: [ "/app/docker/backup.sh" ]
+
+    depends_on:
+      - confluence-exporter
+
+volumes:
+  backups:
+    driver: local
+  metrics:
+    driver: local
