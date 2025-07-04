@@ -2,7 +2,7 @@
 
 **/*.env
 scratch/
-log/
+logs/
 .ssh/
 
 _tmp/*
@@ -131,3 +131,4 @@ dmypy.json
 .gitignore
 config/config.json
 config/app_data.json
+exports/*
