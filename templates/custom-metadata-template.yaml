@@ -1,0 +1,37 @@
+# Custom Metadata Template for Open-WebUI Export
+
+# This template defines the metadata fields to include in exported files
+# You can customize this template to include only the fields you need
+
+metadata_fields:
+  - space
+  - author
+  - created
+  - updated
+  - ancestors
+  - page_name
+  - url
+  - labels
+  - version
+  - parent_page_id
+  - attachment_name
+  - attachment_size
+  - attachment_media_type
+  - attachment_url
+
+# Example of how metadata is applied to pages
+page_metadata_example:
+  ---
+  confluence_space: "MYSPACE"
+  confluence_space_name: "My Space"
+  confluence_homepage: "Home Page Title"
+  confluence_ancestors: ["Parent Page", "Child Page"]
+  confluence_page_name: "Current Page"
+  confluence_author: "john.doe@company.com"
+  confluence_created: "2024-01-15T10:30:00Z"
+  confluence_updated: "2024-01-20T14:45:00Z"
+  confluence_page_id: "12345"
+  confluence_page_url: "https://company.atlassian.net/wiki/spaces/MYSPACE/pages/12345"
+  confluence_labels: ["documentation", "internal"]
+  confluence_version: "5"
+  ---

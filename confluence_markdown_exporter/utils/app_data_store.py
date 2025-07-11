@@ -10,6 +10,7 @@ from pydantic import BaseModel
 from pydantic import Field
 from pydantic import SecretStr
 from pydantic import ValidationError
+from pydantic import validator
 from typer import get_app_dir
 
 
@@ -92,6 +93,28 @@ class ApiDetails(BaseModel):
     )
 
 
+class OpenWebUIAuthConfig(BaseModel):
+    """Configuration for Open-WebUI authentication"""
+
+    url: AnyHttpUrl | Literal[""] = Field(
+        "", title="Open-WebUI URL", description="Base URL of the Open-WebUI instance."
+    )
+    api_key: SecretStr = Field(
+        SecretStr(""),
+        title="Open-WebUI API Key",
+        description="API key for Open-WebUI authentication.",
+    )
+
+    @validator("api_key")
+    def api_key_must_not_be_empty(cls, v, values):
+        """Validate that the API key is not empty when export_to_open_webui is enabled."""
+        # Get export_to_open_webui from parent model if available
+        export_enabled = values.get("export_to_open_webui", False)
+        if export_enabled and v.get_secret_value() == "":
+            raise ValueError("API key must not be empty when export_to_open_webui is enabled")
+        return v
+
+
 class AuthConfig(BaseModel):
     """Authentication configuration for Confluence and Jira."""
 
@@ -108,6 +131,11 @@ class AuthConfig(BaseModel):
         ),
         title="Jira Account",
         description="Authentication for Jira.",
+    )
+    open_webui: OpenWebUIAuthConfig = Field(
+        default_factory=lambda: OpenWebUIAuthConfig(url="", api_key=SecretStr("")),
+        title="Open-WebUI Account",
+        description="Authentication for Open-WebUI.",
     )
 
 
@@ -195,6 +223,27 @@ class ExportConfig(BaseModel):
             "If enabled, the title will be added as a top-level heading."
         ),
     )
+    export_to_open_webui: bool = Field(
+        default=False,
+        title="Export to Open-WebUI",
+        description="Whether to export pages to Open-WebUI knowledge base.",
+    )
+    open_webui_attachment_extensions: str = Field(
+        default="md,txt,pdf",
+        title="Open-WebUI Attachment Extensions",
+        description=(
+            "Comma-separated list of file extensions to include when exporting "
+            "attachments to Open-WebUI. Example: 'md,txt,pdf'"
+        ),
+    )
+    open_webui_batch_add: bool = Field(
+        default=True,
+        title="Open-WebUI Batch Add",
+        description=(
+            "Whether to use batch processing when adding files to Open-WebUI. "
+            "Batch processing is more efficient but may use more memory."
+        ),
+    )
 
 
 class ConfigModel(BaseModel):
@@ -203,6 +252,19 @@ class ConfigModel(BaseModel):
     export: ExportConfig = Field(default_factory=ExportConfig, title="Export Settings")
     retry_config: RetryConfig = Field(default_factory=RetryConfig, title="Retry/Network Settings")
     auth: AuthConfig = Field(default_factory=AuthConfig, title="Authentication")
+
+    @validator("auth")
+    def check_open_webui_credentials(cls, v, values):
+        """Ensure both URL and API key are set when export_to_open_webui is enabled."""
+        # Get export config from values
+        export_config = values.get("export", None)
+        if export_config is not None and getattr(export_config, "export_to_open_webui", False):
+            open_webui = v.open_webui
+            if not open_webui.url:
+                raise ValueError("URL must be set when export_to_open_webui is enabled")
+            if not open_webui.api_key.get_secret_value():
+                raise ValueError("API key must be set when export_to_open_webui is enabled")
+        return v
 
 
 def _convert_paths_to_str(obj: object) -> object:
@@ -214,6 +276,7 @@ def _convert_paths_to_str(obj: object) -> object:
     if isinstance(obj, Path):
         return str(obj)
     if isinstance(obj, SecretStr):
+        # Return the actual secret value instead of redacting
         return obj.get_secret_value()
     if isinstance(obj, AnyHttpUrl):
         return str(obj)
@@ -260,14 +323,55 @@ def _set_by_path(obj: dict, path: str, value: object) -> None:
 
 
 def set_setting(path: str, value: object) -> None:
-    """Set a setting by dot-path and save to config file."""
+    """Set a setting by dot-path and save to config file without overwriting API keys."""
+    # Load current configuration
     data = load_app_data()
+
+    # Make a copy of auth section to preserve API keys
+    auth_copy = data.get("auth", {}).copy() if "auth" in data else {}
+
+    # Update the setting
     _set_by_path(data, path, value)
+
     try:
+        # Validate the updated configuration
         settings = ConfigModel.model_validate(data)
+        settings_dict = settings.model_dump()
+
+        # Preserve API keys in auth section
+        if "auth" in settings_dict:
+            # Only preserve API keys if they weren't explicitly changed
+            if path.split(".")[0] != "auth" or (
+                len(path.split(".")) > 1
+                and path.split(".")[1] not in ["api_token", "pat", "api_key"]
+            ):
+                # Preserve Confluence API keys
+                if "confluence" in auth_copy and "confluence" in settings_dict["auth"]:
+                    if "api_token" in auth_copy.get("confluence", {}):
+                        settings_dict["auth"]["confluence"]["api_token"] = auth_copy["confluence"][
+                            "api_token"
+                        ]
+                    if "pat" in auth_copy.get("confluence", {}):
+                        settings_dict["auth"]["confluence"]["pat"] = auth_copy["confluence"]["pat"]
+
+                # Preserve Jira API keys
+                if "jira" in auth_copy and "jira" in settings_dict["auth"]:
+                    if "api_token" in auth_copy.get("jira", {}):
+                        settings_dict["auth"]["jira"]["api_token"] = auth_copy["jira"]["api_token"]
+                    if "pat" in auth_copy.get("jira", {}):
+                        settings_dict["auth"]["jira"]["pat"] = auth_copy["jira"]["pat"]
+
+                # Preserve Open-WebUI API key
+                if "open_webui" in auth_copy and "open_webui" in settings_dict["auth"]:
+                    if "api_key" in auth_copy.get("open_webui", {}):
+                        settings_dict["auth"]["open_webui"]["api_key"] = auth_copy["open_webui"][
+                            "api_key"
+                        ]
+
+        # Save the updated configuration
+        save_app_data(settings_dict)
     except ValidationError as e:
         raise ValueError(str(e)) from e
-    save_app_data(settings.model_dump())
 
 
 def get_default_value_by_path(path: str | None = None) -> object:

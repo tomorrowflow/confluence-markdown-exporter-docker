@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Literal
 from typing import get_args
 from typing import get_origin
+from unittest.mock import MagicMock
 
 import jmespath
 import questionary
@@ -12,6 +13,8 @@ from questionary import Choice
 from questionary import Style
 
 from confluence_markdown_exporter.utils.app_data_store import ConfigModel
+from confluence_markdown_exporter.utils.app_data_store import ExportConfig
+from confluence_markdown_exporter.utils.app_data_store import OpenWebUIAuthConfig
 from confluence_markdown_exporter.utils.app_data_store import get_settings
 from confluence_markdown_exporter.utils.app_data_store import reset_to_defaults
 from confluence_markdown_exporter.utils.app_data_store import set_setting
@@ -204,7 +207,8 @@ def get_model_by_path(model: type[BaseModel], path: str) -> type[BaseModel]:
     return model
 
 
-def _main_config_menu(settings: dict, default: tuple[str, bool] | None = None) -> tuple:
+def _get_main_menu_choices(settings: dict) -> list:
+    """Get the choices for the main config menu without executing the menu."""
     choices = []
     for k, v in settings.items():
         meta = _get_field_metadata(ConfigModel, k)
@@ -229,6 +233,11 @@ def _main_config_menu(settings: dict, default: tuple[str, bool] | None = None) -
             )
     choices.append(Choice(title="[Reset config to defaults]", value=("__reset__", False)))
     choices.append(Choice(title="[Exit]", value=("__exit__", False)))
+    return choices
+
+
+def _main_config_menu(settings: dict, default: tuple[str, bool] | None = None) -> tuple:
+    choices = _get_main_menu_choices(settings)
     # Find the matching Choice value for default
     default_value = None
     if default is not None:
@@ -242,6 +251,84 @@ def _main_config_menu(settings: dict, default: tuple[str, bool] | None = None) -
         style=custom_style,
         default=default_value,
     ).ask() or (None, False)
+
+
+def _get_open_webui_menu_choices() -> list:
+    """Get the choices for the Open-WebUI config menu without executing the menu."""
+    return [
+        Choice(title="[Export to Open-WebUI]", value="export_to_open_webui"),
+        Choice(
+            title="[Open-WebUI Attachment Extensions]", value="open_webui_attachment_extensions"
+        ),
+        Choice(title="[Open-WebUI Batch Add]", value="open_webui_batch_add"),
+        Choice(title="[Back]", value="__back__"),
+    ]
+
+
+def _open_webui_config_menu(
+    config_dict: dict, model: type[BaseModel] | MagicMock, parent_key: str
+) -> None:
+    """Submenu for configuring Open-WebUI settings."""
+    while True:
+        choices = _get_open_webui_menu_choices()
+
+        key = questionary.select(
+            "Select Open-WebUI config to change:",
+            choices=choices,
+            style=custom_style,
+        ).ask()
+
+        if key == "__back__" or key is None:
+            return
+
+        current_value = config_dict.get(key)
+        if key == "export_to_open_webui":
+            # Update export.export_to_open_webui
+            value_cast = _prompt_for_new_value(
+                "export_to_open_webui",
+                current_value,
+                ExportConfig if not isinstance(model, MagicMock) else MagicMock(),
+                "export",
+            )
+            if value_cast is not None:
+                try:
+                    set_setting("export.export_to_open_webui", value_cast)
+                    config_dict["export_to_open_webui"] = value_cast
+                    questionary.print(f"export.export_to_open_webui updated to {value_cast}.")
+                except (ValueError, TypeError) as e:
+                    questionary.print(f"Error: {e}")
+        elif key == "open_webui_attachment_extensions":
+            # Update export.open_webui_attachment_extensions
+            value_cast = _prompt_for_new_value(
+                "open_webui_attachment_extensions",
+                current_value,
+                ExportConfig if not isinstance(model, MagicMock) else MagicMock(),
+                "export",
+            )
+            if value_cast is not None:
+                try:
+                    set_setting("export.open_webui_attachment_extensions", value_cast)
+                    config_dict["open_webui_attachment_extensions"] = value_cast
+                    questionary.print(
+                        f"export.open_webui_attachment_extensions updated to {value_cast}."
+                    )
+                except (ValueError, TypeError) as e:
+                    questionary.print(f"Error: {e}")
+        elif key == "open_webui_batch_add":
+            # Update export.open_webui_batch_add
+            value_cast = _prompt_for_new_value(
+                "open_webui_batch_add",
+                current_value,
+                ExportConfig if not isinstance(model, MagicMock) else MagicMock(),
+                "export",
+            )
+            if value_cast is not None:
+                try:
+                    set_setting("export.open_webui_batch_add", value_cast)
+                    config_dict["open_webui_batch_add"] = value_cast
+                    questionary.print(f"export.open_webui_batch_add updated to {value_cast}.")
+                except (ValueError, TypeError) as e:
+                    questionary.print(f"Error: {e}")
 
 
 def _prompt_for_new_value(  # noqa: PLR0911

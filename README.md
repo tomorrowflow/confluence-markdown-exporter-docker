@@ -291,6 +291,106 @@ export CME_CONFIG_PATH=/path/to/your/custom_config.json
 
 This is useful for using different configs for different environments or for scripting.
 
+## Open-WebUI Integration
+
+The confluence-markdown-exporter now supports direct export to Open-WebUI knowledge bases, allowing you to seamlessly migrate your Confluence content to your Open-WebUI instance.
+
+### Features
+
+- **Automatic Knowledge Base Creation**: Creates knowledge bases named after your Confluence spaces
+- **Metadata Enrichment**: Adds comprehensive Confluence metadata to exported files
+- **Attachment Filtering**: Configurable file type filtering for attachments
+- **Batch Upload**: Efficient batch processing for large exports
+- **Progress Reporting**: Detailed progress tracking with success/failure reporting
+- **Error Handling**: Robust error handling with detailed logging
+
+### Quick Start
+
+1. **Configure Open-WebUI Settings**
+   ```bash
+   python -m confluence_markdown_exporter.main config
+   ```
+   - Navigate to "Authentication" → "Open-WebUI"
+   - Enter your Open-WebUI URL and API key
+   - Navigate to "Export Settings" → "Open-WebUI Export"
+   - Enable "Export to Open-WebUI"
+
+2. **Export a Space**
+   ```bash
+   confluence-markdown-exporter space MYSPACE ./output_path/
+   ```
+
+3. **Check Your Open-WebUI Instance**
+   - Your content will be available in a knowledge base named after your space
+   - Files include enriched metadata from Confluence
+
+### Configuration Options
+
+| Setting | Description | Default |
+|---------|-------------|---------|
+| `auth.open_webui.url` | Open-WebUI instance URL | "" |
+| `auth.open_webui.api_key` | Open-WebUI API key | "" |
+| `export.export_to_open_webui` | Enable Open-WebUI export | false |
+| `export.open_webui_attachment_extensions` | Allowed file extensions | "md,txt,pdf" |
+| `export.open_webui_batch_add` | Use batch upload | true |
+
+### Authentication
+
+To use Open-WebUI integration, you need:
+
+1. **Open-WebUI API Key**: Generate an API key from your Open-WebUI instance
+2. **Proper Permissions**: Ensure your API key has permissions to create knowledge bases and upload files
+
+### Metadata Enrichment
+
+Exported files include comprehensive metadata:
+
+**For Pages:**
+```yaml
+---
+confluence_space: "MYSPACE"
+confluence_space_name: "My Space"
+confluence_homepage: "Home Page Title"
+confluence_ancestors: ["Parent Page", "Child Page"]
+confluence_page_name: "Current Page"
+confluence_author: "john.doe@company.com"
+confluence_created: "2024-01-15T10:30:00Z"
+confluence_updated: "2024-01-20T14:45:00Z"
+confluence_page_id: "12345"
+confluence_page_url: "https://company.atlassian.net/wiki/spaces/MYSPACE/pages/12345"
+---
+```
+
+**For Attachments:**
+```yaml
+---
+confluence_space: "MYSPACE"
+confluence_attachment_name: "document.pdf"
+confluence_attachment_size: 1024000
+confluence_attachment_media_type: "application/pdf"
+confluence_attachment_url: "https://company.atlassian.net/wiki/download/attachments/12345/document.pdf"
+confluence_parent_page_id: "12345"
+---
+```
+
+### Troubleshooting
+
+**Connection Issues:**
+- Verify your Open-WebUI URL and API key
+- Test connection: `confluence-markdown-exporter test-connection`
+- Check firewall and network settings
+
+**Upload Failures:**
+- Check file size limits (default: 10MB)
+- Verify file extensions are allowed
+- Check Open-WebUI storage capacity
+
+**Permission Errors:**
+- Ensure API key has required permissions
+- Check Open-WebUI user role settings
+
+For detailed troubleshooting, see [docs/troubleshooting.md](docs/troubleshooting.md).
+
 ## Update
 
 Update python package via pip.
@@ -313,6 +413,28 @@ It generally was tested on:
 ## Contributing
 
 If you would like to contribute, please read [our contribution guideline](CONTRIBUTING.md).
+
+## API Key Security
+
+The confluence-markdown-exporter takes API key security seriously. Here are the measures in place to protect your API keys:
+
+1. **Secure Storage**: API keys are stored using secure storage mechanisms that prevent them from being exposed in plain text.
+
+2. **Redaction in Logs**: All logs are automatically redacted to remove sensitive information like API keys. This ensures that even if logs are accessed, API keys won't be exposed.
+
+3. **Error Message Protection**: Error messages are processed to remove sensitive information before being displayed to the user.
+
+4. **File Permissions**: The configuration file containing API keys has restricted permissions, ensuring only the user can read it.
+
+5. **Environment Variable Support**: For added security, you can use environment variables to store sensitive information instead of storing it directly in the configuration file.
+
+To further secure your API keys:
+
+- Regularly rotate your API keys
+- Use environment variables for sensitive information
+- Ensure your system has proper access controls
+
+For more information on securing API keys, see the [security documentation](docs/security.md).
 
 ## License
 

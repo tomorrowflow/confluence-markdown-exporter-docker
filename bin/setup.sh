@@ -7,3 +7,7 @@ echo "${RECOMMENDED_VSCODE_EXTENSIONS[@]}"
 
 echo -e "\nInstalling recommended VS code extensions:"
 echo "${RECOMMENDED_VSCODE_EXTENSIONS[@]}" | xargs -L 1 code --install-extension
+
+# Secure configuration file
+echo -e "\nSecuring configuration file..."
+./bin/secure_config.sh

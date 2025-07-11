@@ -6,7 +6,10 @@
     "attachment_href": "relative",
     "attachment_path": "{space_name}/attachments/{attachment_file_id}{attachment_extension}",
     "page_breadcrumbs": true,
-    "include_document_title": true
+    "include_document_title": true,
+    "export_to_open_webui": false,  // Whether to export to Open-WebUI
+    "open_webui_attachment_extensions": "md,txt,pdf",  // File extensions to export to Open-WebUI
+    "open_webui_batch_add": true  // Whether to use batch mode for Open-WebUI
   },
   "retry_config": {
     "backoff_and_retry": true,
@@ -33,6 +36,10 @@
       "username": "",
       "api_token": "",
       "pat": "sdf"
+    },
+    "open_webui": {
+      "url": "",  // Open-WebUI URL
+      "api_key": ""  // Open-WebUI API key
     }
   }
-} 
+}

@@ -1,0 +1,56 @@
+{
+    "auth": {
+        "confluence": {
+            "url": "https://company.atlassian.net",
+            "username": "exporter@company.com",
+            "api_token": "${CONFLUENCE_API_TOKEN}"
+        },
+        "open_webui": {
+            "url": "https://openwebui.company.com",
+            "api_key": "${OPENWEBUI_API_KEY}"
+        }
+    },
+    "export": {
+        "output_path": "./exports",
+        "page_href": "absolute",
+        "attachment_href": "absolute",
+        "page_breadcrumbs": true,
+        "include_document_title": true,
+        "export_to_open_webui": true,
+        "open_webui_attachment_extensions": "md,txt,pdf,docx,xlsx,pptx,jpg,png,gif,svg",
+        "open_webui_batch_add": true,
+        "open_webui_max_file_size_mb": 25,
+        "open_webui_timeout_seconds": 300,
+        "open_webui_metadata_fields": [
+            "space",
+            "author",
+            "created",
+            "updated",
+            "ancestors",
+            "page_name",
+            "url",
+            "labels",
+            "version"
+        ]
+    },
+    "retry_config": {
+        "backoff_and_retry": true,
+        "backoff_factor": 2,
+        "max_backoff_seconds": 120,
+        "max_backoff_retries": 5,
+        "retry_status_codes": [
+            413,
+            429,
+            500,
+            502,
+            503,
+            504
+        ]
+    },
+    "logging": {
+        "level": "INFO",
+        "file": "./logs/export.log",
+        "max_file_size_mb": 10,
+        "backup_count": 5
+    }
+}
